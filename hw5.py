@@ -12,12 +12,13 @@ class QuestionnaireAnalysis:
 
     def __init__(self, data_fname: Union[pathlib.Path, str]):
 
+        # check for dtype error
         if type(data_fname) != str and data_fname.__module__ != 'pathlib':
             raise TypeError
-
+        # cast str to pathlib in order to open it
         if type(data_fname) == str:
             data_fname = pathlib.Path(data_fname)
-
+        # check for existance
         if not pathlib.Path.exists(data_fname):
             raise ValueError
 
@@ -42,8 +43,8 @@ class QuestionnaireAnalysis:
       Bin edges
         """
 
+        # create hist with numpy
         hist, bins = np.histogram(self.data.age.values, bins=10, range =(0, 100))
-        print('')
         fig, ax = plt.subplots()
         ax.bar(bins[:-1], hist, width=np.diff(bins), edgecolor="black", align="edge")
         plt.xlabel('Age')
@@ -63,22 +64,28 @@ class QuestionnaireAnalysis:
       the (ordinal) index after a reset.
         """
         def check_mail(mail):
+            # checks mail is not missing
             if pd.isna(mail):
                 return False
+            # check dtype
             if type(mail) != str:
                 return False
+            # check @ cases
             if mail.count('@') != 1 or mail.index('@') in [0, len(mail)-1]:
                 return False
+            # check . cases
             if mail.count('.') != 1 or mail.index('.') in [0, len(mail)-1]:
                 return False
+            # check not . after @
             if mail.split('@')[1][0] == '.':
                 return False
 
             return True
 
         copy_data = self.data.copy()
-
+        # get only vaild mails
         copy_data = copy_data[copy_data.email.apply(check_mail)]
+        # reset dataframe indices after removing not valid mails
         copy_data.reset_index(inplace=True, drop=True)
 
         return copy_data
@@ -98,9 +105,11 @@ class QuestionnaireAnalysis:
 
         copy_data = self.data.copy()
         questions_col = pd.Series(['q1', 'q2', 'q3', 'q4', 'q5'])
+        # dataframe containing only quetions info
         questions_pd = self.data[questions_col]
-
+        # fills na with mean value
         self.data[questions_col] = questions_pd.apply(lambda x: x.fillna(x.mean()), axis=1)
+        # to get the indices of the missing answers
         nan_indices = np.unique((np.where(questions_pd.isna()))[0])
 
         return self.data, nan_indices
@@ -127,12 +136,15 @@ class QuestionnaireAnalysis:
 
         def calc_mean(series, maximal_nans_per_sub=1):
             import math
+            # check if there are more tham maximal na in series
             if series.isna().sum() > maximal_nans_per_sub:
                 return pd.NA
             return math.floor(series.mean())
 
         new_data = self.data.copy()
         questions_col = pd.Series(['q1', 'q2', 'q3', 'q4', 'q5'])
+        # calculates mean with the above function
         new_data['score'] = new_data[questions_col].apply(calc_mean, axis=1).astype("UInt8")
 
         return new_data
+
